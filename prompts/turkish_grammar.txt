@@ -1,0 +1,10 @@
+Bu dosya, Türkçe dilbilgisiyle ilgili temel notlar ve örnekler için ayrılmıştır.
+
+İleride:
+- Ek türleri (-de/-da, -den/-dan, -e/-a yönelme, iyelik ekleri, zaman ekleri vb.)
+- CEFR seviyelerine göre örnek cümle setleri
+- Sık yapılan hatalara dair mini açıklamalar
+
+Teacher Copilot çekirdeği bu dosyayı doğrudan kullanmak zorunda değil;
+ancak burada tutulan bilgilerle prompt'lar zenginleştirilebilir.
+

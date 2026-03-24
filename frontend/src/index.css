@@ -1,0 +1,264 @@
+@import "tailwindcss";
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: #f8fafc;
+}
+
+.rain-emoji {
+  display: inline-block;
+  position: relative;
+  animation: rain-fall 1.2s ease-in-out infinite;
+  filter: drop-shadow(0 3px 8px rgba(6, 182, 212, 0.55));
+}
+
+.rain-drop {
+  position: absolute;
+  font-size: 0.6em;
+  top: -0.15em;
+  opacity: 0;
+  animation: rain-drop 0.9s linear infinite;
+  pointer-events: none;
+}
+
+.rain-drop-1 {
+  left: -0.55em;
+  animation-delay: 0.1s;
+}
+
+.rain-drop-2 {
+  right: -0.55em;
+  animation-delay: 0.35s;
+}
+
+.rain-drop-3 {
+  left: 0.1em;
+  animation-delay: 0.6s;
+}
+
+@keyframes rain-fall {
+  0% {
+    transform: translateY(-4px) rotate(-2deg);
+    opacity: 0.8;
+  }
+  40% {
+    transform: translateY(4px) rotate(0deg);
+    opacity: 1;
+  }
+  70% {
+    transform: translateY(6px) rotate(1deg);
+    opacity: 0.9;
+  }
+  100% {
+    transform: translateY(-4px) rotate(-2deg);
+    opacity: 0.8;
+  }
+}
+
+@keyframes rain-drop {
+  0% {
+    transform: translateY(-4px);
+    opacity: 0;
+  }
+  20% {
+    opacity: 0.8;
+  }
+  60% {
+    transform: translateY(10px);
+    opacity: 0.6;
+  }
+  100% {
+    transform: translateY(16px);
+    opacity: 0;
+  }
+}
+
+@keyframes upcoming-shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  20% {
+    transform: translateX(-2px);
+  }
+  40% {
+    transform: translateX(2px);
+  }
+  60% {
+    transform: translateX(-1px);
+  }
+  80% {
+    transform: translateX(1px);
+  }
+}
+
+.upcoming-shake {
+  animation: upcoming-shake 1.2s ease-in-out infinite;
+}
+
+@keyframes upcoming-blink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  45% {
+    opacity: 0.25;
+  }
+  60% {
+    opacity: 1;
+  }
+}
+
+.upcoming-blink {
+  animation: upcoming-blink 1s ease-in-out infinite;
+}
+
+.doc-modern:empty:before {
+  content: "Ders akışı, öğrencinin zorlandığı yerler, fikirler...";
+  color: #94a3b8;
+  cursor: text;
+}
+
+.doc-modern {
+  outline: none;
+}
+
+.doc-modern b,
+.doc-modern strong {
+  font-weight: 800;
+}
+
+.doc-modern i,
+.doc-modern em {
+  font-style: italic;
+}
+
+.doc-modern u {
+  text-decoration: underline;
+}
+
+.doc-modern h1 {
+  font-size: 2rem;
+  font-weight: 900;
+  margin-top: 1rem;
+  margin-bottom: 0.5rem;
+}
+
+.doc-modern h2 {
+  font-size: 1.5rem;
+  font-weight: 800;
+  margin-top: 0.75rem;
+  margin-bottom: 0.5rem;
+}
+
+.doc-modern h3 {
+  font-size: 1.25rem;
+  font-weight: 700;
+  margin-top: 0.5rem;
+  margin-bottom: 0.25rem;
+}
+
+.doc-modern h4 {
+  font-size: 1.125rem;
+  font-weight: 700;
+  margin-top: 0.25rem;
+  margin-bottom: 0.25rem;
+}
+
+.doc-modern ul {
+  list-style-type: disc;
+  padding-left: 1.5rem;
+  margin-bottom: 1rem;
+}
+
+.doc-modern ol {
+  list-style-type: decimal;
+  padding-left: 1.5rem;
+  margin-bottom: 1rem;
+}
+
+.doc-modern li {
+  margin-bottom: 0.25rem;
+}
+/* Markdown Styles for Lessons (st.markdown style) */
+.markdown-content {
+  color: #334155;
+}
+
+.markdown-content h1 {
+  font-size: 1.875rem;
+  font-weight: 900;
+  color: #0f172a;
+  border-bottom: 2px solid #e2e8f0;
+  padding-bottom: 0.5rem;
+  margin: 1.5rem 0 1rem;
+}
+
+.markdown-content h2 {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: #1e293b;
+  margin: 1.25rem 0 0.75rem;
+}
+
+.markdown-content h3 {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #334155;
+  margin: 1rem 0 0.5rem;
+}
+
+.markdown-content p {
+  margin-bottom: 1rem;
+  line-height: 1.7;
+}
+
+.markdown-content ul,
+.markdown-content ol {
+  margin-bottom: 1rem;
+  padding-left: 1.5rem;
+}
+
+.markdown-content li {
+  margin-bottom: 0.5rem;
+}
+
+.markdown-content blockquote {
+  border-left: 4px solid #cbd5e1;
+  padding-left: 1rem;
+  color: #64748b;
+  font-style: italic;
+  margin: 1rem 0;
+}
+
+.markdown-content table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1rem 0;
+  background: white;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.markdown-content th {
+  background: #f1f5f9;
+  font-weight: 700;
+  text-align: left;
+  padding: 0.75rem 1rem;
+  border-bottom: 2px solid #e2e8f0;
+}
+
+.markdown-content td {
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.markdown-content code {
+  background: #f1f5f9;
+  padding: 0.2rem 0.4rem;
+  border-radius: 4px;
+  font-size: 0.875em;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}

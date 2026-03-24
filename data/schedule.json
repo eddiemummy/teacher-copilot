@@ -1,0 +1,22 @@
+[
+  {
+    "id": "1773672922246-yxdyjl",
+    "day_of_week": 1,
+    "start_time": "18:00",
+    "duration_hours": 1.0,
+    "student_name": "Hakan",
+    "title": "Birebir Türkçe dersi",
+    "is_online": true,
+    "date": null
+  },
+  {
+    "id": "1773673073954-9wjor9",
+    "day_of_week": 0,
+    "start_time": "18:00",
+    "duration_hours": 1.0,
+    "student_name": "Öğrenci",
+    "title": "Birebir Türkçe dersi",
+    "is_online": true,
+    "date": null
+  }
+]

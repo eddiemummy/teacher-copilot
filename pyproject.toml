@@ -1,0 +1,20 @@
+[project]
+name = "teacher-copilot"
+version = "0.1.0"
+description = "Türkçe öğretmeni için kişisel LLM asistanı"
+authors = [
+    {name = "Hakan Eser"}
+]
+dependencies = [
+    "fastapi",
+    "uvicorn",
+    "pydantic",
+    "requests",
+    "python-dotenv",
+    "openai>=1.0.0",
+    "reportlab",
+]
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"

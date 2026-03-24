@@ -1,0 +1,17 @@
+[
+  {
+    "id": "1773672895204-hqbcfl",
+    "name": "Hakan",
+    "level": "A2",
+    "native_language": "İngilizce",
+    "weekly_lessons": 2,
+    "lesson_duration_minutes": 60,
+    "target": "B1",
+    "needs": "Konuşma",
+    "weekly_focus": "",
+    "homework_preferences": "",
+    "struggle_areas": "",
+    "assessment_note": "",
+    "message_template": "Bu derste ... Bir sonraki derste ..."
+  }
+]

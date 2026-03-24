@@ -1,0 +1,24 @@
+CEFR SEVIYE NOTLARI (özet)
+
+A1:
+- Çok basit cümleler
+- Günlük ifadeler
+- Bol tekrar, az kelime
+
+A2:
+- Kısa ama doğal diyaloglar
+- Basit bağlaçlar: çünkü, ama, sonra...
+- Günlük rutin, alışkanlıklar, basit geçmiş/gelecek anlatımı
+
+B1:
+- Deneyim anlatma
+- Fikir ve tercih ifade etme
+- Daha uzun metinler, paragraf yapısı
+
+B2 ve üzeri:
+- Soyut konular
+- Görüş bildirme, tartışma
+- Akademik tarz girişler
+
+Bu dosya, seviye hassasiyeti gereken prompt'larda referans olarak kullanılabilir.
+
