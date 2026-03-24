@@ -1,11 +1,11 @@
 from __future__ import annotations
 
 import json
-from pathlib import Path
 from typing import List
 
+from core.storage_paths import get_data_dir
 
-DATA_DIR = Path(__file__).resolve().parent.parent / "data"
+DATA_DIR = get_data_dir()
 SCHEDULE_PATH = DATA_DIR / "schedule.json"
 
 

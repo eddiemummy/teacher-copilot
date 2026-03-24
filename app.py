@@ -345,6 +345,13 @@ async def quiz_pdf(req: QuizRequest):
 
 
 if __name__ == "__main__":
+    import os
+    import sys
     import uvicorn
 
-    uvicorn.run("app:app", host="0.0.0.0", port=8010, reload=True)
+    reload_env = os.getenv("TEACHER_COPILOT_RELOAD")
+    if reload_env is None:
+        reload_env = "0" if getattr(sys, "frozen", False) else "1"
+    reload_enabled = reload_env == "1"
+
+    uvicorn.run("app:app", host="0.0.0.0", port=8010, reload=reload_enabled)

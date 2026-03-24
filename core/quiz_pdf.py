@@ -29,6 +29,10 @@ def _find_font_path() -> str | None:
         "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
         "/usr/share/fonts/truetype/noto/NotoSans-Regular.ttf",
         "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
+        # Windows common
+        "C:\\Windows\\Fonts\\arial.ttf",
+        "C:\\Windows\\Fonts\\arialuni.ttf",
+        "C:\\Windows\\Fonts\\times.ttf",
     ]
 
     for path in candidates:
