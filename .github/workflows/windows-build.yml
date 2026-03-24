@@ -44,7 +44,7 @@ jobs:
       - name: Copy backend into Tauri bundle
         run: |
           if (!(Test-Path -Path "frontend/src-tauri/bin")) { New-Item -ItemType Directory -Path "frontend/src-tauri/bin" | Out-Null }
-          Copy-Item "dist/teacher-copilot-api.exe" "frontend/src-tauri/bin/teacher-copilot-api.exe" -Force
+          Copy-Item "dist/teacher-copilot-api.exe" "frontend/src-tauri/bin/teacher-copilot-api-x86_64-pc-windows-msvc.exe" -Force
 
       - name: Install frontend deps
         working-directory: frontend

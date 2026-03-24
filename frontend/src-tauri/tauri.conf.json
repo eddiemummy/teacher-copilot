@@ -27,7 +27,7 @@
     "active": true,
     "targets": "all",
     "externalBin": [
-      "bin/teacher-copilot-api"
+      "bin/teacher-copilot-api-x86_64-pc-windows-msvc"
     ],
     "icon": [
       "icons/32x32.png",
