@@ -36,7 +36,7 @@ import base64
 from pathlib import Path
 
 
-app = FastAPI(title="Teacher Copilot API")
+app = FastAPI(title="Rain API")
 
 app.add_middleware(
     CORSMiddleware,

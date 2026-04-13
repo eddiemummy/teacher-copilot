@@ -180,7 +180,7 @@ def render_quiz_pdf(title: str, subtitle: str, body_text: str, output_path: Path
         str(output_path),
         pagesize=A4,
         title=title,
-        author="Teacher Copilot",
+        author="Rain",
     )
     doc.build(story)
 

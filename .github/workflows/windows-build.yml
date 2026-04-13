@@ -39,12 +39,25 @@ jobs:
 
       - name: Build backend exe
         run: |
-          pyinstaller --noconfirm --onefile --name teacher-copilot-api --add-data "data;data" app.py
+          pyinstaller --noconfirm --onefile --clean --name rain-api --add-data "data;data" app.py
+
+      - name: Diagnostics - List dist directory
+        run: |
+          Get-ChildItem -Path dist -Recurse
 
       - name: Copy backend into Tauri bundle
         run: |
-          if (!(Test-Path -Path "frontend/src-tauri/bin")) { New-Item -ItemType Directory -Path "frontend/src-tauri/bin" | Out-Null }
-          Copy-Item "dist/teacher-copilot-api.exe" "frontend/src-tauri/bin/teacher-copilot-api-x86_64-pc-windows-msvc.exe" -Force
+          if (!(Test-Path -Path "frontend/src-tauri/bin")) {
+            New-Item -ItemType Directory -Path "frontend/src-tauri/bin" -Force | Out-Null
+          }
+          $exePath = Get-ChildItem -Path "dist" -Filter "rain-api.exe" -Recurse | Select-Object -First 1 -ExpandProperty FullName
+          if ($exePath) {
+            Write-Host "Found executable at: $exePath"
+            Copy-Item $exePath "frontend/src-tauri/bin/rain-api-x86_64-pc-windows-msvc.exe" -Force
+          } else {
+            Write-Error "Could not find rain-api.exe in dist directory"
+            exit 1
+          }
 
       - name: Install frontend deps
         working-directory: frontend
@@ -61,5 +74,5 @@ jobs:
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: teacher-copilot-windows-bundle
+          name: rain-windows-bundle
           path: frontend/src-tauri/target/release/bundle/**
