@@ -1,0 +1,3 @@
+#!/bin/sh
+# Dev placeholder sidecar for Tauri build checks.
+exit 0

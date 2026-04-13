@@ -14,9 +14,9 @@ fn spawn_backend<R: tauri::Runtime>(app: &tauri::AppHandle<R>) {
     }
   };
 
-  let mut sidecar_path = resource_dir.join("teacher-copilot-api");
+  let mut sidecar_path = resource_dir.join("rain-api");
   if cfg!(target_os = "windows") {
-    sidecar_path = resource_dir.join("teacher-copilot-api-x86_64-pc-windows-msvc.exe");
+    sidecar_path = resource_dir.join("rain-api-x86_64-pc-windows-msvc.exe");
   }
 
   let mut cmd = Command::new(sidecar_path);

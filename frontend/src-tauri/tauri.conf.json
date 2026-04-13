@@ -1,18 +1,18 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
-  "productName": "Teacher Copilot",
+  "productName": "Rain",
   "version": "0.1.0",
-  "identifier": "com.teachercopilot.app",
+  "identifier": "com.rain.desktop",
   "build": {
     "frontendDist": "../dist",
-    "devUrl": "http://localhost:5173",
-    "beforeDevCommand": "npm run dev",
+    "devUrl": "http://127.0.0.1:5174",
+    "beforeDevCommand": "npm run dev -- --host 127.0.0.1 --port 5174",
     "beforeBuildCommand": "npm run build"
   },
   "app": {
     "windows": [
       {
-        "title": "Teacher Copilot",
+        "title": "Rain",
         "width": 800,
         "height": 600,
         "resizable": true,
@@ -27,7 +27,7 @@
     "active": true,
     "targets": "all",
     "externalBin": [
-      "bin/teacher-copilot-api"
+      "bin/rain-api"
     ],
     "icon": [
       "icons/32x32.png",
