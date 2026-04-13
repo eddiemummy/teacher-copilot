@@ -1,4 +1,4 @@
-from typing import Literal, Optional
+from typing import List, Literal, Optional
 
 import os
 import requests
@@ -29,36 +29,53 @@ class LLMClient:
             else os.getenv("OLLAMA_MODEL", "gpt-oss:120b-cloud")
         )
 
-    def generate(self, prompt: str) -> str:
+    def generate(self, prompt: str, images: Optional[List[str]] = None) -> str:
         if self.provider == "openai":
-            return self._generate_openai(prompt)
-        return self._generate_ollama(prompt)
+            return self._generate_openai(prompt, images)
+        return self._generate_ollama(prompt, images)
 
-    def _generate_ollama(self, prompt: str) -> str:
+    def _generate_ollama(self, prompt: str, images: Optional[List[str]] = None) -> str:
         url = os.getenv("OLLAMA_URL", "http://localhost:11434/api/generate")
         payload = {
             "model": self.model,
             "prompt": prompt,
             "stream": False,
         }
+        # Not using images in the payload anymore, as we use OCR + Text
         try:
             r = requests.post(url, json=payload, timeout=300)
             r.raise_for_status()
             data = r.json()
-            # ollama generate format
             return data.get("response", "") or data.get("output", "")
         except Exception as e:
             return f"LLM çağrısı başarısız oldu: {e}"
 
-    def _generate_openai(self, prompt: str) -> str:
+    def _generate_openai(self, prompt: str, images: Optional[List[str]] = None) -> str:
         import openai
 
         openai.api_key = os.environ["OPENAI_API_KEY"]
         client = openai.OpenAI()
+
+        messages = []
+        if images:
+            content = [{"type": "text", "text": prompt}]
+            for img in images:
+                # Assuming images are already correctly encoded as base64 with data:image/... prefix
+                # or just raw base64. OpenAI expects data:image/jpeg;base64,...
+                # We'll prepend it if it's missing.
+                prefix = "data:image/jpeg;base64," if not img.startswith("data:") else ""
+                content.append({
+                    "type": "image_url",
+                    "image_url": {"url": f"{prefix}{img}"}
+                })
+            messages.append({"role": "user", "content": content})
+        else:
+            messages.append({"role": "user", "content": prompt})
+
         try:
             resp = client.chat.completions.create(
                 model=self.model,
-                messages=[{"role": "user", "content": prompt}],
+                messages=messages,
                 temperature=0.4,
             )
             return resp.choices[0].message.content or ""

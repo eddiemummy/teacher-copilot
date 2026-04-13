@@ -320,7 +320,11 @@ function CardShell({
 
 function GuideView() {
   const [messages, setMessages] = useState<
-    Array<{ role: "user" | "assistant"; content: string }>
+    Array<{
+      role: "user" | "assistant";
+      content: string;
+      attachment?: { type: "image" | "pdf"; url?: string; name?: string };
+    }>
   >([
     {
       role: "assistant",
@@ -331,17 +335,93 @@ function GuideView() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [filePreview, setFilePreview] = useState<string | null>(null);
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setSelectedFile(file);
+      if (file.type.startsWith("image/")) {
+        const reader = new FileReader();
+        reader.onloadend = () => setFilePreview(reader.result as string);
+        reader.readAsDataURL(file);
+      } else {
+        setFilePreview(null);
+      }
+    }
+  };
+
+  const compressImage = (file: File, maxWidth: number = 1024): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = (event) => {
+        const img = new Image();
+        img.src = event.target?.result as string;
+        img.onload = () => {
+          const canvas = document.createElement("canvas");
+          let width = img.width;
+          let height = img.height;
+
+          if (width > maxWidth) {
+            height = (height * maxWidth) / width;
+            width = maxWidth;
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext("2d");
+          ctx?.drawImage(img, 0, 0, width, height);
+          resolve(canvas.toDataURL("image/jpeg", 0.8));
+        };
+        img.onerror = reject;
+      };
+      reader.onerror = reject;
+    });
+  };
+
   const handleSend = async () => {
     const trimmed = input.trim();
-    if (!trimmed || loading) return;
+    if (!trimmed && !selectedFile) return;
+    if (loading) return;
 
-    const userMsg = { role: "user" as const, content: trimmed };
+    let attachmentPayload: any = {};
+    let localAttachment: any = undefined;
+
+    if (selectedFile) {
+      if (selectedFile.type.startsWith("image/")) {
+        const b64 = await compressImage(selectedFile);
+        attachmentPayload.images = [b64];
+        localAttachment = { type: "image", url: b64 };
+      } else if (selectedFile.type === "application/pdf") {
+        const reader = new FileReader();
+        const base64Promise = new Promise<string>((resolve) => {
+          reader.onloadend = () => resolve(reader.result as string);
+          reader.readAsDataURL(selectedFile);
+        });
+        const b64 = await base64Promise;
+        attachmentPayload.pdf_base64 = b64;
+        localAttachment = { type: "pdf", name: selectedFile.name };
+      }
+    }
+
+    const userMsg = {
+      role: "user" as const,
+      content: trimmed || (selectedFile ? `[Dosya: ${selectedFile.name}]` : ""),
+      attachment: localAttachment,
+    };
+
     setInput("");
+    setSelectedFile(null);
+    setFilePreview(null);
     setError(null);
     setMessages((prev) => [...prev, userMsg]);
     setLoading(true);
 
-    const historySnapshot = [...messages, userMsg].slice(-8);
+    const historySnapshot = [...messages, userMsg]
+      .slice(-8)
+      .map((m) => ({ role: m.role, content: m.content }));
 
     try {
       const res = await fetch("http://localhost:8010/guide-chat", {
@@ -350,6 +430,7 @@ function GuideView() {
         body: JSON.stringify({
           message: userMsg.content,
           history: historySnapshot,
+          ...attachmentPayload,
         }),
       });
       const data = await res.json();
@@ -373,10 +454,17 @@ function GuideView() {
   return (
     <div className="w-full max-w-4xl mx-auto">
       <div className="bg-white border border-slate-200 rounded-[2.5rem] shadow-sm p-10 flex flex-col gap-6 text-center items-center">
-        <div className="space-y-2">
-          <h1 className="text-3xl font-black tracking-tight text-slate-900">
-            Socrates
-          </h1>
+        <div className="flex flex-col items-center gap-3">
+          <div className="flex items-center gap-4">
+            <img
+              src="/socrates_portrait.png"
+              alt="Socrates"
+              className="w-16 h-16 rounded-full border-2 border-slate-200 shadow-sm object-cover"
+            />
+            <h1 className="text-3xl font-black tracking-tight text-slate-900">
+              Socrates
+            </h1>
+          </div>
           <p className="text-slate-500 italic">
             The unexamined life is not worth living.
           </p>
@@ -396,6 +484,19 @@ function GuideView() {
                     : "bg-white border border-slate-200 text-slate-700"
                     }`}
                 >
+                  {msg.attachment?.type === "image" && (
+                    <img
+                      src={msg.attachment.url}
+                      className="max-w-full h-auto rounded-lg mb-2 border border-slate-700"
+                      alt="attachment"
+                    />
+                  )}
+                  {msg.attachment?.type === "pdf" && (
+                    <div className="flex items-center gap-2 mb-2 p-2 bg-slate-800 rounded-lg text-xs">
+                      <span className="text-xl">📄</span>
+                      <span className="truncate">{msg.attachment.name}</span>
+                    </div>
+                  )}
                   {msg.role === "assistant" ? (
                     <ReactMarkdown remarkPlugins={[remarkGfm]}>
                       {msg.content}
@@ -423,14 +524,53 @@ function GuideView() {
             className="w-full min-h-[120px] rounded-2xl border border-slate-200 bg-white p-4 text-sm leading-relaxed text-slate-700 focus:outline-none focus:ring-2 focus:ring-teal-400/40"
           />
           <div className="flex items-center justify-between">
-            <button
-              onClick={handleSend}
-              disabled={loading}
-              className="px-6 py-2.5 rounded-full bg-slate-900 text-white text-xs font-bold uppercase tracking-[0.2em] shadow-md hover:bg-slate-800 transition disabled:opacity-40"
-            >
-              {loading ? "Yanıtlanıyor..." : "Gönder"}
-            </button>
-            {error && <span className="text-xs text-red-500">{error}</span>}
+            <div className="flex items-center gap-2">
+              <label className="cursor-pointer p-2 rounded-xl bg-slate-100 hover:bg-slate-200 transition-colors group relative">
+                <input
+                  type="file"
+                  className="hidden"
+                  accept="image/*,application/pdf"
+                  onChange={handleFileChange}
+                />
+                <span className="text-xl">📎</span>
+                <span className="absolute -top-10 left-1/2 -translate-x-1/2 px-2 py-1 bg-slate-800 text-white text-[10px] rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+                  Resim veya PDF ekle
+                </span>
+              </label>
+
+              {selectedFile && (
+                <div className="flex items-center gap-2 px-3 py-1.5 bg-teal-50 border border-teal-100 rounded-xl animate-in zoom-in-95 duration-200">
+                  {filePreview ? (
+                    <img src={filePreview} className="w-6 h-6 rounded object-cover" />
+                  ) : (
+                    <span className="text-sm">📄</span>
+                  )}
+                  <span className="text-[10px] font-bold text-teal-700 truncate max-w-[100px]">
+                    {selectedFile.name}
+                  </span>
+                  <button
+                    onClick={() => {
+                      setSelectedFile(null);
+                      setFilePreview(null);
+                    }}
+                    className="text-teal-400 hover:text-teal-600 transition-colors"
+                  >
+                    ✕
+                  </button>
+                </div>
+              )}
+            </div>
+
+            <div className="flex items-center gap-3">
+              {error && <span className="text-[10px] text-red-500 font-medium">{error}</span>}
+              <button
+                onClick={handleSend}
+                disabled={loading || (!input.trim() && !selectedFile)}
+                className="px-6 py-2.5 rounded-full bg-slate-900 text-white text-xs font-bold uppercase tracking-[0.2em] shadow-md hover:bg-slate-800 transition disabled:opacity-40"
+              >
+                {loading ? "Yanıtlanıyor..." : "Gönder"}
+              </button>
+            </div>
           </div>
         </div>
       </div>

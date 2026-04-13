@@ -37,9 +37,18 @@ jobs:
           python -m pip install -e .
           python -m pip install pyinstaller
 
+      - name: Install Tesseract OCR (Windows)
+        run: |
+          choco install tesseract --no-progress
+          if (!(Test-Path -Path "bin/tesseract")) {
+            New-Item -ItemType Directory -Path "bin/tesseract" -Force | Out-Null
+          }
+          # Copy Tesseract files from default install path
+          Copy-Item "C:\Program Files\Tesseract-OCR\*" "bin/tesseract" -Recurse -Force
+
       - name: Build backend exe
         run: |
-          pyinstaller --noconfirm --onefile --clean --name rain-api --add-data "data;data" app.py
+          pyinstaller --noconfirm --onefile --clean --name rain-api --add-data "data;data" --add-data "bin/tesseract;bin/tesseract" app.py
 
       - name: Diagnostics - List dist directory
         run: |

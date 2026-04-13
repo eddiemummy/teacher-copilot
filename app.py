@@ -34,6 +34,9 @@ from core.materials_store import load_materials, save_materials
 from core.progress_store import load_progress, save_progress
 import base64
 from pathlib import Path
+import fitz  # PyMuPDF
+import io
+from core.ocr_helper import extract_text_from_image_base64
 
 
 app = FastAPI(title="Rain API")
@@ -83,8 +86,37 @@ async def program_plan(req: ProgramPlanRequest):
     return {"program": await generate_program_plan(req)}
 
 
+def extract_text_from_pdf_base64(b64_str: str) -> str:
+    try:
+        # data:application/pdf;base64,.... formatını ayıkla
+        if "," in b64_str:
+            b64_str = b64_str.split(",")[1]
+        pdf_data = base64.b64decode(b64_str)
+        doc = fitz.open(stream=pdf_data, filetype="pdf")
+        text = ""
+        for page in doc:
+            text += page.get_text()
+        return text
+    except Exception as e:
+        print(f"PDF extraction error: {e}")
+        return ""
+
+
 @app.post("/guide-chat")
-async def guide_chat(req: GuideChatRequest):
+async def guide_chat(req: GuideChatRequest, pdf_base64: Optional[str] = None):
+    # Eğer PDF gönderildiyse metne çevirip context'e ekle
+    if pdf_base64:
+        extracted = extract_text_from_pdf_base64(pdf_base64)
+        if extracted:
+            req.document_context = (req.document_context or "") + "\n" + extracted
+            
+    # Eğer resimler gönderildiyse OCR ile metne çevirip context'e ekle
+    if req.images:
+        for img_b64 in req.images:
+            ocr_text = extract_text_from_image_base64(img_b64)
+            if ocr_text:
+                req.document_context = (req.document_context or "") + f"\n[GÖRSEL İÇERİĞİ (OCR)]:\n{ocr_text}\n"
+    
     return {"reply": await generate_guide_reply(req)}
 
 

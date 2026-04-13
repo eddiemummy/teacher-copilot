@@ -13,6 +13,9 @@ dependencies = [
     "python-dotenv",
     "openai>=1.0.0",
     "reportlab",
+    "pymupdf",
+    "pytesseract",
+    "Pillow",
 ]
 
 [build-system]

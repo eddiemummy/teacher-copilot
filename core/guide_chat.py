@@ -13,6 +13,8 @@ class ChatMessage(BaseModel):
 class GuideChatRequest(BaseModel):
     message: str
     history: Optional[List[ChatMessage]] = None
+    images: Optional[List[str]] = None
+    document_context: Optional[str] = None
 
 
 SYSTEM_PROMPT = """Sen "Socrates" adında bilge bir rehbersin.
@@ -42,8 +44,14 @@ async def generate_guide_reply(req: GuideChatRequest) -> str:
     history = req.history or []
     trimmed = history[-8:]
     history_block = _format_history(trimmed)
+
+    context_block = ""
+    if req.document_context:
+        context_block = f"\nEK BAĞLAM / RESİM İÇERİĞİ:\n{req.document_context}\n"
+
     prompt = (
-        f"{SYSTEM_PROMPT}\n\n"
+        f"{SYSTEM_PROMPT}\n"
+        f"{context_block}\n"
         "SOHBET:\n"
         f"{history_block}\n"
         f"Öğretmen: {req.message}\n"
