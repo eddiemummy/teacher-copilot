@@ -48,7 +48,7 @@ jobs:
 
       - name: Build backend exe
         run: |
-          pyinstaller --noconfirm --onefile --clean --name rain-api --add-data "data;data" --add-data "bin/tesseract;bin/tesseract" app.py
+          pyinstaller --noconfirm --onefile --clean --name rain-api --add-data "data;data" --add-data "bin/tesseract;bin/tesseract" rain_api_entry.py
 
       - name: Diagnostics - List dist directory
         run: |
