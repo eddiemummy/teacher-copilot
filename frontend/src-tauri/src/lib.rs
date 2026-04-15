@@ -49,9 +49,9 @@ fn spawn_backend<R: tauri::Runtime>(app: &tauri::AppHandle<R>) {
   let mut cmd = Command::new(sidecar_path);
   cmd.env("TEACHER_COPILOT_RELOAD", "0");
   if let Ok(data_dir) = app.path().app_data_dir() {
-    cmd.env("TEACHER_COPILOT_DATA_DIR", data_dir);
+    cmd.env("TEACHER_COPILOT_DATA_DIR", &data_dir);
     // Ensure relative paths (e.g. PDF outputs) land in a writable location.
-    cmd.current_dir(data_dir);
+    cmd.current_dir(&data_dir);
   }
   cmd.env("TEACHER_COPILOT_HOST", "127.0.0.1");
   cmd.env("TEACHER_COPILOT_PORT", "8010");
