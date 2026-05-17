@@ -1,8 +1,49 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import Notebook from "./components/Notebook";
 import "./index.css";
+
+const API_BASE = "http://127.0.0.1:8010";
+
+/** Poll /health until the backend is reachable (Tauri sidecar may take a few seconds to start). */
+function useBackendReady() {
+  const [ready, setReady] = useState(false);
+  const [dots, setDots] = useState(".");
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    const poll = async () => {
+      try {
+        const res = await fetch(`${API_BASE}/health`, { signal: AbortSignal.timeout(1500) });
+        const data = await res.json();
+        if (!cancelled && data?.status === "ok") {
+          setReady(true);
+          if (timerRef.current) clearInterval(timerRef.current);
+        }
+      } catch {
+        // Not ready yet — keep polling
+      }
+    };
+
+    poll();
+    timerRef.current = setInterval(poll, 600);
+
+    // Animate dots
+    const dotsTimer = setInterval(() => {
+      if (!cancelled) setDots((d) => (d.length >= 3 ? "." : d + "."));
+    }, 400);
+
+    return () => {
+      cancelled = true;
+      if (timerRef.current) clearInterval(timerRef.current);
+      clearInterval(dotsTimer);
+    };
+  }, []);
+
+  return { ready, dots };
+}
 
 type MainTab = "home" | "ders" | "defter" | "guide";
 type LessonSubTab =
@@ -15,7 +56,47 @@ type LessonSubTab =
   | "quiz"
   | "scenarios";
 
+function BackendLoadingOverlay({ dots }: { dots: string }) {
+  return (
+    <div
+      style={{
+        position: "fixed",
+        inset: 0,
+        zIndex: 9999,
+        background: "rgba(15,23,42,0.92)",
+        backdropFilter: "blur(6px)",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: "1.5rem",
+      }}
+    >
+      <div
+        style={{
+          width: 56,
+          height: 56,
+          borderRadius: "50%",
+          border: "4px solid rgba(45,212,191,0.2)",
+          borderTop: "4px solid #2dd4bf",
+          animation: "spin 0.8s linear infinite",
+        }}
+      />
+      <div style={{ textAlign: "center" }}>
+        <p style={{ color: "#f1f5f9", fontSize: 18, fontWeight: 700, margin: 0 }}>
+          Backend başlatılıyor{dots}
+        </p>
+        <p style={{ color: "#94a3b8", fontSize: 13, marginTop: 8 }}>
+          Ollama ile bağlantı kuruluyor, lütfen bekleyin.
+        </p>
+      </div>
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+    </div>
+  );
+}
+
 function App() {
+  const { ready: backendReady, dots } = useBackendReady();
   const [selectedModel, setSelectedModel] = useState("gpt-oss:120b-cloud");
   const [mainTab, setMainTab] = useState<MainTab>("home");
   const [lessonTab, setLessonTab] = useState<LessonSubTab>("lesson");
@@ -64,9 +145,10 @@ function App() {
   };
 
   useEffect(() => {
+    if (!backendReady) return;
     const loadSchedule = async () => {
       try {
-        const res = await fetch("http://127.0.0.1:8010/schedule");
+        const res = await fetch(`${API_BASE}/schedule`);
         const data = await res.json();
         if (data?.entries) {
           setScheduleEntries(
@@ -87,12 +169,13 @@ function App() {
       }
     };
     loadSchedule();
-  }, []);
+  }, [backendReady]);
 
   useEffect(() => {
+    if (!backendReady) return;
     const loadStudents = async () => {
       try {
-        const res = await fetch("http://127.0.0.1:8010/students");
+        const res = await fetch(`${API_BASE}/students`);
         const data = await res.json();
         if (data?.students) {
           const index = data.students.reduce(
@@ -117,10 +200,11 @@ function App() {
       }
     };
     loadStudents();
-  }, []);
+  }, [backendReady]);
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col">
+      {!backendReady && <BackendLoadingOverlay dots={dots} />}
       {/* Top bar */}
       <header className="border-b border-slate-200 bg-white/80 backdrop-blur-sm">
         <div className="max-w-6xl mx-auto px-6 py-3 flex items-center justify-between gap-4">
@@ -435,7 +519,7 @@ function GuideView({ selectedModel }: { selectedModel: string }) {
       .map((m) => ({ role: m.role, content: m.content }));
 
     try {
-      const res = await fetch("http://127.0.0.1:8010/guide-chat", {
+      const res = await fetch(`${API_BASE}/guide-chat`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -601,23 +685,32 @@ function useLLMRequest<TReq extends object, TRes>(
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<TRes | null>(null);
 
-  const call = async (body: TReq) => {
+  const call = useCallback(async (body: TReq) => {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`http://127.0.0.1:8010${path}`, {
+      const res = await fetch(`${API_BASE}${path}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ...body, model: selectedModel }),
       });
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(`Sunucu hatası ${res.status}: ${text.slice(0, 120)}`);
+      }
       const data = await res.json();
       setResult(data);
     } catch (e: any) {
-      setError(e?.message ?? "İstek başarısız oldu");
+      const msg: string = e?.message ?? "";
+      if (msg.includes("fetch") || msg.includes("NetworkError") || msg.includes("Failed")) {
+        setError("Backend'e bağlanılamadı. Ollama çalışıyor mu? (127.0.0.1:8010)");
+      } else {
+        setError(msg || "İstek başarısız oldu");
+      }
     } finally {
       setLoading(false);
     }
-  };
+  }, [path, selectedModel]);
 
   return [call, { loading, error, result }];
 }
@@ -979,7 +1072,7 @@ function ProgramView({
   useEffect(() => {
     const load = async () => {
       try {
-        const res = await fetch("http://127.0.0.1:8010/schedule");
+        const res = await fetch(`${API_BASE}/schedule`);
         const data = await res.json();
         if (data?.entries) {
           setSessions(
@@ -1005,7 +1098,7 @@ function ProgramView({
   useEffect(() => {
     const loadStudents = async () => {
       try {
-        const res = await fetch("http://127.0.0.1:8010/students");
+        const res = await fetch(`${API_BASE}/students`);
         const data = await res.json();
         if (data?.students) {
           setStudents(data.students);
@@ -1020,7 +1113,7 @@ function ProgramView({
   useEffect(() => {
     const loadProgress = async () => {
       try {
-        const res = await fetch("http://127.0.0.1:8010/progress");
+        const res = await fetch(`${API_BASE}/progress`);
         const data = await res.json();
         if (data?.progress) {
           setProgressEntries(data.progress);
@@ -1035,7 +1128,7 @@ function ProgramView({
   useEffect(() => {
     const loadMaterials = async () => {
       try {
-        const res = await fetch("http://127.0.0.1:8010/materials");
+        const res = await fetch(`${API_BASE}/materials`);
         const data = await res.json();
         if (data?.materials) {
           setMaterials(data.materials);
@@ -1085,7 +1178,7 @@ function ProgramView({
       lesson_duration_minutes: Number(studentDraft.lesson_duration_minutes) || 60,
     };
     try {
-      const res = await fetch("http://127.0.0.1:8010/students", {
+      const res = await fetch(`${API_BASE}/students`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -1123,7 +1216,7 @@ function ProgramView({
       id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
     };
     try {
-      const res = await fetch("http://127.0.0.1:8010/progress", {
+      const res = await fetch(`${API_BASE}/progress`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -1142,7 +1235,7 @@ function ProgramView({
 
   const removeProgress = async (id: string) => {
     try {
-      const res = await fetch(`http://127.0.0.1:8010/progress/${id}`, {
+      const res = await fetch(`${API_BASE}/progress/${id}`, {
         method: "DELETE",
       });
       const data = await res.json();
@@ -1165,7 +1258,7 @@ function ProgramView({
       date: materialDraft.date || undefined,
     };
     try {
-      const res = await fetch("http://127.0.0.1:8010/materials", {
+      const res = await fetch(`${API_BASE}/materials`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -1189,7 +1282,7 @@ function ProgramView({
 
   const removeMaterial = async (id: string) => {
     try {
-      const res = await fetch(`http://127.0.0.1:8010/materials/${id}`, {
+      const res = await fetch(`${API_BASE}/materials/${id}`, {
         method: "DELETE",
       });
       const data = await res.json();
@@ -1205,7 +1298,7 @@ function ProgramView({
 
   const removeStudent = async (id: string) => {
     try {
-      const res = await fetch(`http://127.0.0.1:8010/students/${id}`, {
+      const res = await fetch(`${API_BASE}/students/${id}`, {
         method: "DELETE",
       });
       const data = await res.json();
@@ -1262,7 +1355,7 @@ function ProgramView({
       date: sessionDraft.repeatWeekly ? "" : sessionDraft.date || "",
     };
     try {
-      const res = await fetch("http://127.0.0.1:8010/schedule", {
+      const res = await fetch(`${API_BASE}/schedule`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -1311,7 +1404,7 @@ function ProgramView({
 
   const removeSession = async (id: string) => {
     try {
-      const res = await fetch(`http://127.0.0.1:8010/schedule/${id}`, {
+      const res = await fetch(`${API_BASE}/schedule/${id}`, {
         method: "DELETE",
       });
       const data = await res.json();
@@ -2654,7 +2747,7 @@ function QuizPdfView({ selectedModel }: { selectedModel: string }) {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch("http://127.0.0.1:8010/quiz-pdf", {
+      const res = await fetch(`${API_BASE}/quiz-pdf`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -2819,7 +2912,7 @@ function ScenarioDialoguesView({ selectedModel }: { selectedModel: string }) {
     setPdfLoading(true);
     setPdfError(null);
     try {
-      const res = await fetch("http://127.0.0.1:8010/roleplay-cards-pdf", {
+      const res = await fetch(`${API_BASE}/roleplay-cards-pdf`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -3049,7 +3142,7 @@ function SummaryView({
   useEffect(() => {
     const loadStudents = async () => {
       try {
-        const res = await fetch("http://127.0.0.1:8010/students");
+        const res = await fetch(`${API_BASE}/students`);
         const data = await res.json();
         if (data?.students) {
           setStudents(data.students);
