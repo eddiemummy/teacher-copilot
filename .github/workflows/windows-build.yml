@@ -62,20 +62,37 @@ jobs:
             Write-Error "rain-api.exe not found after build"
             exit 1
           }
-          $p = Start-Process -FilePath $exePath -PassThru -WindowStyle Hidden
+          $env:TEACHER_COPILOT_HOST = "127.0.0.1"
+          $env:TEACHER_COPILOT_PORT = "18010"
+          $env:TEACHER_COPILOT_RELOAD = "0"
+          $stdout = Join-Path $env:RUNNER_TEMP "rain-api-smoke-stdout.log"
+          $stderr = Join-Path $env:RUNNER_TEMP "rain-api-smoke-stderr.log"
+          $p = Start-Process -FilePath $exePath -PassThru -WindowStyle Hidden -RedirectStandardOutput $stdout -RedirectStandardError $stderr
           try {
             $ok = $false
-            for ($i = 0; $i -lt 40; $i++) {
+            for ($i = 0; $i -lt 80; $i++) {
               try {
-                $resp = Invoke-RestMethod -Uri "http://127.0.0.1:8010/health" -TimeoutSec 2
+                $resp = Invoke-RestMethod -Uri "http://127.0.0.1:18010/health" -TimeoutSec 2
                 if ($resp.status -eq "ok") {
                   $ok = $true
                   break
                 }
               } catch {}
+              if ($p.HasExited) {
+                break
+              }
               Start-Sleep -Milliseconds 500
             }
             if (-not $ok) {
+              Write-Host "---- rain-api stdout ----"
+              if (Test-Path $stdout) { Get-Content $stdout -ErrorAction SilentlyContinue }
+              Write-Host "---- rain-api stderr ----"
+              if (Test-Path $stderr) { Get-Content $stderr -ErrorAction SilentlyContinue }
+              if ($p.HasExited) {
+                Write-Host "rain-api exited with code: $($p.ExitCode)"
+              } else {
+                Write-Host "rain-api process did not become healthy in time"
+              }
               Write-Error "Backend smoke test failed: /health did not return status=ok"
               exit 1
             }
