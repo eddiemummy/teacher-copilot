@@ -11,7 +11,7 @@ dependencies = [
     "pydantic",
     "requests",
     "python-dotenv",
-    "openai>=1.0.0",
+    "langchain-ollama",
     "reportlab",
     "pymupdf",
     "pytesseract",
