@@ -11,6 +11,7 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 import uvicorn
+from app import app as fastapi_app
 
 
 def main() -> None:
@@ -27,7 +28,7 @@ def main() -> None:
     reload_enabled = os.getenv("TEACHER_COPILOT_RELOAD", "0") == "1"
 
     uvicorn.run(
-        "app:app",
+        fastapi_app,
         host=host,
         port=port,
         reload=reload_enabled,
