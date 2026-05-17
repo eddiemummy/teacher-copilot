@@ -6,6 +6,7 @@ from .llm_client import default_llm
 
 
 class ProgramPlanRequest(BaseModel):
+    model: str | None = None
     level: str  # Örn: "A2"
     native_language: str  # Öğrencinin anadili
     weekly_lessons: int  # Haftalık ders sayısı
@@ -49,4 +50,4 @@ Not: Bu çıktı resmi bir müfredat değil, öğretmene yardımcı olacak esnek
 2) Müfredat Taslakları (Yaklaşımlara Göre)
 3) Anadile Göre Zorluklar / İpuçları
 """
-    return default_llm.generate(prompt.strip())
+    return default_llm.generate(prompt.strip(), model=req.model)

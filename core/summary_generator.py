@@ -5,6 +5,7 @@ from .llm_client import default_llm
 
 
 class SummaryRequest(BaseModel):
+    model: str | None = None
     notes: str  # Hocanın ders sonrası notu
     next_topics: Optional[str] = None  # Sonraki ders planı (opsiyonel)
     student_name: Optional[str] = None  # Mesaj kişiselleştirme (opsiyonel)
@@ -62,4 +63,4 @@ GÖREV:
 4) Kelime / İfade Seti
 5) Öğrenciye Mesaj
 """
-    return default_llm.generate(prompt.strip())
+    return default_llm.generate(prompt.strip(), model=req.model)

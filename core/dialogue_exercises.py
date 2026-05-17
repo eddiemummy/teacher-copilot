@@ -4,6 +4,7 @@ from .llm_client import default_llm
 
 
 class DialogueExercisesRequest(BaseModel):
+    model: str | None = None
     level: str
     dialogue: str
     include_key: bool = False
@@ -32,4 +33,4 @@ Kurallar:
 - Başlık ve gereksiz açıklama yazma.
 {key_rule}
 """
-    return default_llm.generate(prompt.strip())
+    return default_llm.generate(prompt.strip(), model=req.model)

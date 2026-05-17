@@ -54,6 +54,37 @@ jobs:
         run: |
           Get-ChildItem -Path dist -Recurse
 
+      - name: Smoke test backend exe
+        shell: pwsh
+        run: |
+          $exePath = Get-ChildItem -Path "dist" -Filter "rain-api.exe" -Recurse | Select-Object -First 1 -ExpandProperty FullName
+          if (!$exePath) {
+            Write-Error "rain-api.exe not found after build"
+            exit 1
+          }
+          $p = Start-Process -FilePath $exePath -PassThru -WindowStyle Hidden
+          try {
+            $ok = $false
+            for ($i = 0; $i -lt 40; $i++) {
+              try {
+                $resp = Invoke-RestMethod -Uri "http://127.0.0.1:8010/health" -TimeoutSec 2
+                if ($resp.status -eq "ok") {
+                  $ok = $true
+                  break
+                }
+              } catch {}
+              Start-Sleep -Milliseconds 500
+            }
+            if (-not $ok) {
+              Write-Error "Backend smoke test failed: /health did not return status=ok"
+              exit 1
+            }
+          } finally {
+            if (!$p.HasExited) {
+              Stop-Process -Id $p.Id -Force
+            }
+          }
+
       - name: Copy backend into Tauri bundle
         run: |
           if (!(Test-Path -Path "frontend/src-tauri/bin")) {
@@ -65,6 +96,21 @@ jobs:
             Copy-Item $exePath "frontend/src-tauri/bin/rain-api-x86_64-pc-windows-msvc.exe" -Force
           } else {
             Write-Error "Could not find rain-api.exe in dist directory"
+            exit 1
+          }
+
+      - name: Verify sidecar file
+        shell: pwsh
+        run: |
+          $sidecar = "frontend/src-tauri/bin/rain-api-x86_64-pc-windows-msvc.exe"
+          if (!(Test-Path -Path $sidecar)) {
+            Write-Error "Sidecar not found: $sidecar"
+            exit 1
+          }
+          $size = (Get-Item $sidecar).Length
+          Write-Host "Sidecar size: $size bytes"
+          if ($size -lt 1000000) {
+            Write-Error "Sidecar looks too small; likely invalid placeholder/bad build"
             exit 1
           }
 

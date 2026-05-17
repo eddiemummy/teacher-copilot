@@ -273,10 +273,32 @@ async def upsert_student(student: Student):
 
 @app.delete("/students/{student_id}")
 async def delete_student(student_id: str):
-    global STUDENTS
+    global STUDENTS, SCHEDULE, MATERIALS, PROGRESS
+
+    student = next((s for s in STUDENTS if s.id == student_id), None)
+    student_name = student.name if student else None
+
     STUDENTS = [s for s in STUDENTS if s.id != student_id]
     save_students(STUDENTS)
-    return {"students": STUDENTS}
+
+    # Cascade delete: öğrencinin bağlı kayıtlarını da temizle
+    PROGRESS = [p for p in PROGRESS if p.student_id != student_id]
+    save_progress(PROGRESS)
+
+    MATERIALS = [m for m in MATERIALS if m.student_id != student_id]
+    save_materials(MATERIALS)
+
+    # Takvim kayıtları şu an student_name ile tutuluyor
+    if student_name:
+        SCHEDULE = [e for e in SCHEDULE if e.student_name != student_name]
+        save_schedule(SCHEDULE)
+
+    return {
+        "students": STUDENTS,
+        "entries": SCHEDULE,
+        "materials": MATERIALS,
+        "progress": PROGRESS,
+    }
 
 
 # --- Materyal Bankası ---

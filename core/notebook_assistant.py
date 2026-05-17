@@ -4,6 +4,7 @@ from .llm_client import default_llm
 
 
 class NotebookEntry(BaseModel):
+    model: str | None = None
     note: str  # Hocanın defterine yazdığı ham not
 
 
@@ -23,5 +24,5 @@ GÖREV:
 
 TÜM ÇIKTI öğretmenin defterine kolayca kopyalayıp kullanabileceği netlikte olsun.
 """
-    return default_llm.generate(prompt.strip())
+    return default_llm.generate(prompt.strip(), model=req.model)
 

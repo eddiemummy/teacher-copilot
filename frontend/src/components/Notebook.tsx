@@ -9,7 +9,7 @@ type Note = {
   content: string;
 };
 
-const apiBase = "http://localhost:8010";
+const apiBase = "http://127.0.0.1:8010";
 
 function toISODate(d: Date) {
   return d.toISOString().slice(0, 10);

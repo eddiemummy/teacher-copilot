@@ -11,6 +11,7 @@ class ChatMessage(BaseModel):
 
 
 class GuideChatRequest(BaseModel):
+    model: str | None = None
     message: str
     history: Optional[List[ChatMessage]] = None
     images: Optional[List[str]] = None
@@ -57,4 +58,4 @@ async def generate_guide_reply(req: GuideChatRequest) -> str:
         f"Öğretmen: {req.message}\n"
         "Socrates:"
     )
-    return default_llm.generate(prompt.strip())
+    return default_llm.generate(prompt.strip(), model=req.model)

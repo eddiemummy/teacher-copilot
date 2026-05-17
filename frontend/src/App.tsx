@@ -16,6 +16,7 @@ type LessonSubTab =
   | "scenarios";
 
 function App() {
+  const [selectedModel, setSelectedModel] = useState("gpt-oss:120b-cloud");
   const [mainTab, setMainTab] = useState<MainTab>("home");
   const [lessonTab, setLessonTab] = useState<LessonSubTab>("lesson");
   const [summaryPrefill, setSummaryPrefill] = useState<{
@@ -65,7 +66,7 @@ function App() {
   useEffect(() => {
     const loadSchedule = async () => {
       try {
-        const res = await fetch("http://localhost:8010/schedule");
+        const res = await fetch("http://127.0.0.1:8010/schedule");
         const data = await res.json();
         if (data?.entries) {
           setScheduleEntries(
@@ -91,7 +92,7 @@ function App() {
   useEffect(() => {
     const loadStudents = async () => {
       try {
-        const res = await fetch("http://localhost:8010/students");
+        const res = await fetch("http://127.0.0.1:8010/students");
         const data = await res.json();
         if (data?.students) {
           const index = data.students.reduce(
@@ -143,6 +144,12 @@ function App() {
           </div>
 
           <div className="flex items-center gap-2 text-xs">
+            <input
+              value={selectedModel}
+              onChange={(e) => setSelectedModel(e.target.value)}
+              placeholder="ollama modeli (örn: llama3.1:8b)"
+              className="px-3 py-2 rounded-xl border border-slate-200 bg-white text-xs w-56"
+            />
             <button
               onClick={() => setMainTab("home")}
               className={`px-4 py-2 rounded-xl font-bold tracking-wider uppercase transition-all duration-200 ${mainTab === "home"
@@ -195,13 +202,14 @@ function App() {
         )}
         {mainTab === "ders" && (
           <DersShell
+            selectedModel={selectedModel}
             lessonTab={lessonTab}
             setLessonTab={setLessonTab}
             onOpenSummary={openSummaryForStudent}
             summaryPrefill={summaryPrefill}
           />
         )}
-        {mainTab === "guide" && <GuideView />}
+        {mainTab === "guide" && <GuideView selectedModel={selectedModel} />}
         {mainTab === "defter" && <Notebook />}
       </div>
     </div>
@@ -209,11 +217,13 @@ function App() {
 }
 
 function DersShell({
+  selectedModel,
   lessonTab,
   setLessonTab,
   onOpenSummary,
   summaryPrefill,
 }: {
+  selectedModel: string;
   lessonTab: LessonSubTab;
   setLessonTab: (t: LessonSubTab) => void;
   onOpenSummary: (
@@ -274,12 +284,13 @@ function DersShell({
 
       {/* Seçili ders aracı */}
       <div className="w-full max-w-4xl mx-auto">
-        {lessonTab === "lesson" && <LessonPlanner />}
-        {lessonTab === "examples" && <ExamplesView />}
-        {lessonTab === "exercises" && <ExerciseView />}
-        {lessonTab === "worksheet" && <WorksheetView />}
+        {lessonTab === "lesson" && <LessonPlanner selectedModel={selectedModel} />}
+        {lessonTab === "examples" && <ExamplesView selectedModel={selectedModel} />}
+        {lessonTab === "exercises" && <ExerciseView selectedModel={selectedModel} />}
+        {lessonTab === "worksheet" && <WorksheetView selectedModel={selectedModel} />}
         {lessonTab === "summary" && (
           <SummaryView
+            selectedModel={selectedModel}
             prefillStudentName={summaryPrefill.studentName}
             prefillStudentId={summaryPrefill.studentId}
             prefillNotes={summaryPrefill.notes}
@@ -287,10 +298,10 @@ function DersShell({
           />
         )}
         {lessonTab === "program" && (
-          <ProgramView onOpenSummary={onOpenSummary} />
+          <ProgramView selectedModel={selectedModel} onOpenSummary={onOpenSummary} />
         )}
-        {lessonTab === "scenarios" && <ScenarioDialoguesView />}
-        {lessonTab === "quiz" && <QuizPdfView />}
+        {lessonTab === "scenarios" && <ScenarioDialoguesView selectedModel={selectedModel} />}
+        {lessonTab === "quiz" && <QuizPdfView selectedModel={selectedModel} />}
       </div>
     </div>
   );
@@ -318,7 +329,7 @@ function CardShell({
   );
 }
 
-function GuideView() {
+function GuideView({ selectedModel }: { selectedModel: string }) {
   const [messages, setMessages] = useState<
     Array<{
       role: "user" | "assistant";
@@ -424,10 +435,11 @@ function GuideView() {
       .map((m) => ({ role: m.role, content: m.content }));
 
     try {
-      const res = await fetch("http://localhost:8010/guide-chat", {
+      const res = await fetch("http://127.0.0.1:8010/guide-chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          model: selectedModel,
           message: userMsg.content,
           history: historySnapshot,
           ...attachmentPayload,
@@ -578,8 +590,9 @@ function GuideView() {
   );
 }
 
-function useLLMRequest<TReq, TRes>(
+function useLLMRequest<TReq extends object, TRes>(
   path: string,
+  selectedModel: string,
 ): [
     (body: TReq) => Promise<void>,
     { loading: boolean; error: string | null; result: TRes | null },
@@ -592,10 +605,10 @@ function useLLMRequest<TReq, TRes>(
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`http://localhost:8010${path}`, {
+      const res = await fetch(`http://127.0.0.1:8010${path}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
+        body: JSON.stringify({ ...body, model: selectedModel }),
       });
       const data = await res.json();
       setResult(data);
@@ -617,7 +630,7 @@ function MarkdownResult({ content }: { content: string }) {
   );
 }
 
-function LessonPlanner() {
+function LessonPlanner({ selectedModel }: { selectedModel: string }) {
   const [level, setLevel] = useState("A2");
   const [target, setTarget] = useState(
     "Bugün A2 öğrenciyle yönelme eki ve günlük rutin çalışacağım.",
@@ -626,7 +639,7 @@ function LessonPlanner() {
   const [send, state] = useLLMRequest<
     { level: string; target: string; duration_minutes: number },
     { plan: string }
-  >("/lesson-plan");
+  >("/lesson-plan", selectedModel);
 
   return (
     <CardShell
@@ -676,13 +689,13 @@ function LessonPlanner() {
   );
 }
 
-function ExamplesView() {
+function ExamplesView({ selectedModel }: { selectedModel: string }) {
   const [level, setLevel] = useState("A2");
   const [topic, setTopic] = useState("Yönelme eki -e/-a");
   const [send, state] = useLLMRequest<
     { level: string; topic: string; example_count: number },
     { dialogue: string }
-  >("/examples");
+  >("/examples", selectedModel);
 
   return (
     <CardShell
@@ -726,13 +739,13 @@ function ExamplesView() {
   );
 }
 
-function ExerciseView() {
+function ExerciseView({ selectedModel }: { selectedModel: string }) {
   const [level, setLevel] = useState("A2");
   const [topic, setTopic] = useState("Şimdiki zaman -iyor için 10 boşluk doldurma");
   const [send, state] = useLLMRequest<
     { level: string; topic: string; exercise_types: string[]; count: number },
     { exercises: string }
-  >("/exercises");
+  >("/exercises", selectedModel);
 
   return (
     <CardShell
@@ -781,13 +794,13 @@ function ExerciseView() {
   );
 }
 
-function WorksheetView() {
+function WorksheetView({ selectedModel }: { selectedModel: string }) {
   const [level, setLevel] = useState("A1");
   const [topic, setTopic] = useState("Şimdiki zaman -iyor genel pratik");
   const [send, state] = useLLMRequest<
     { level: string; topic: string; target_language?: string },
     { worksheet: string }
-  >("/worksheet");
+  >("/worksheet", selectedModel);
 
   return (
     <CardShell
@@ -829,8 +842,10 @@ function WorksheetView() {
 }
 
 function ProgramView({
+  selectedModel,
   onOpenSummary,
 }: {
+  selectedModel: string;
   onOpenSummary: (
     studentName?: string,
     studentId?: string,
@@ -838,6 +853,7 @@ function ProgramView({
     nextTopics?: string,
   ) => void;
 }) {
+  const [showProgramGuide, setShowProgramGuide] = useState(false);
   const [level, setLevel] = useState("A2");
   const [nativeLanguage, setNativeLanguage] = useState("İngilizce");
   const [weeklyLessons, setWeeklyLessons] = useState(2);
@@ -913,8 +929,8 @@ function ProgramView({
     name: "",
     level: "A2",
     native_language: "İngilizce",
-    weekly_lessons: 2,
-    lesson_duration_minutes: 60,
+    weekly_lessons: "",
+    lesson_duration_minutes: "",
     target: "",
     needs: "",
     weekly_focus: "",
@@ -958,12 +974,12 @@ function ProgramView({
       assessment_note?: string;
     },
     { program: string }
-  >("/program-plan");
+  >("/program-plan", selectedModel);
 
   useEffect(() => {
     const load = async () => {
       try {
-        const res = await fetch("http://localhost:8010/schedule");
+        const res = await fetch("http://127.0.0.1:8010/schedule");
         const data = await res.json();
         if (data?.entries) {
           setSessions(
@@ -989,7 +1005,7 @@ function ProgramView({
   useEffect(() => {
     const loadStudents = async () => {
       try {
-        const res = await fetch("http://localhost:8010/students");
+        const res = await fetch("http://127.0.0.1:8010/students");
         const data = await res.json();
         if (data?.students) {
           setStudents(data.students);
@@ -1004,7 +1020,7 @@ function ProgramView({
   useEffect(() => {
     const loadProgress = async () => {
       try {
-        const res = await fetch("http://localhost:8010/progress");
+        const res = await fetch("http://127.0.0.1:8010/progress");
         const data = await res.json();
         if (data?.progress) {
           setProgressEntries(data.progress);
@@ -1019,7 +1035,7 @@ function ProgramView({
   useEffect(() => {
     const loadMaterials = async () => {
       try {
-        const res = await fetch("http://localhost:8010/materials");
+        const res = await fetch("http://127.0.0.1:8010/materials");
         const data = await res.json();
         if (data?.materials) {
           setMaterials(data.materials);
@@ -1069,7 +1085,7 @@ function ProgramView({
       lesson_duration_minutes: Number(studentDraft.lesson_duration_minutes) || 60,
     };
     try {
-      const res = await fetch("http://localhost:8010/students", {
+      const res = await fetch("http://127.0.0.1:8010/students", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -1082,8 +1098,8 @@ function ProgramView({
           name: "",
           level: "A2",
           native_language: "İngilizce",
-          weekly_lessons: 2,
-          lesson_duration_minutes: 60,
+          weekly_lessons: "",
+          lesson_duration_minutes: "",
           target: "",
           needs: "",
           weekly_focus: "",
@@ -1107,7 +1123,7 @@ function ProgramView({
       id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
     };
     try {
-      const res = await fetch("http://localhost:8010/progress", {
+      const res = await fetch("http://127.0.0.1:8010/progress", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -1126,7 +1142,7 @@ function ProgramView({
 
   const removeProgress = async (id: string) => {
     try {
-      const res = await fetch(`http://localhost:8010/progress/${id}`, {
+      const res = await fetch(`http://127.0.0.1:8010/progress/${id}`, {
         method: "DELETE",
       });
       const data = await res.json();
@@ -1149,7 +1165,7 @@ function ProgramView({
       date: materialDraft.date || undefined,
     };
     try {
-      const res = await fetch("http://localhost:8010/materials", {
+      const res = await fetch("http://127.0.0.1:8010/materials", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -1173,7 +1189,7 @@ function ProgramView({
 
   const removeMaterial = async (id: string) => {
     try {
-      const res = await fetch(`http://localhost:8010/materials/${id}`, {
+      const res = await fetch(`http://127.0.0.1:8010/materials/${id}`, {
         method: "DELETE",
       });
       const data = await res.json();
@@ -1189,7 +1205,7 @@ function ProgramView({
 
   const removeStudent = async (id: string) => {
     try {
-      const res = await fetch(`http://localhost:8010/students/${id}`, {
+      const res = await fetch(`http://127.0.0.1:8010/students/${id}`, {
         method: "DELETE",
       });
       const data = await res.json();
@@ -1246,7 +1262,7 @@ function ProgramView({
       date: sessionDraft.repeatWeekly ? "" : sessionDraft.date || "",
     };
     try {
-      const res = await fetch("http://localhost:8010/schedule", {
+      const res = await fetch("http://127.0.0.1:8010/schedule", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -1295,7 +1311,7 @@ function ProgramView({
 
   const removeSession = async (id: string) => {
     try {
-      const res = await fetch(`http://localhost:8010/schedule/${id}`, {
+      const res = await fetch(`http://127.0.0.1:8010/schedule/${id}`, {
         method: "DELETE",
       });
       const data = await res.json();
@@ -1430,8 +1446,13 @@ function ProgramView({
     return () => clearTimeout(t);
   }, [autoCancelSeconds]);
 
+  const existingStudentNames = new Set(students.map((s) => s.name));
+  const activeSessions = sessions.filter((s) =>
+    existingStudentNames.has(s.studentName),
+  );
+
   const studentNames = Array.from(
-    new Set(sessions.map((s) => s.studentName)),
+    new Set(activeSessions.map((s) => s.studentName)),
   ).sort((a, b) => a.localeCompare(b));
 
   const allStudentNames = Array.from(
@@ -1439,15 +1460,15 @@ function ProgramView({
   ).sort((a, b) => a.localeCompare(b));
 
   const studentTotals = allStudentNames.map((name) => {
-    const items = sessions.filter((s) => s.studentName === name);
+    const items = activeSessions.filter((s) => s.studentName === name);
     const totalHours = items.reduce((sum, s) => sum + s.durationHours, 0);
     return { name, totalLessons: items.length, totalHours };
   });
 
   const filteredSessions =
     studentFilter === "Tümü"
-      ? sessions
-      : sessions.filter((s) => s.studentName === studentFilter);
+      ? activeSessions
+      : activeSessions.filter((s) => s.studentName === studentFilter);
 
   const recurringSessionsByDay = days.map((_, idx) =>
     filteredSessions
@@ -1551,6 +1572,12 @@ function ProgramView({
         >
           {state.loading ? "Program Hazırlanıyor..." : "Program Oluştur"}
         </button>
+        <button
+          onClick={() => setShowProgramGuide(true)}
+          className="mx-auto px-5 py-2 rounded-full border border-slate-200 text-xs font-bold uppercase tracking-[0.2em] text-slate-600 hover:bg-slate-50"
+        >
+          Parametreler Ne İşe Yarar?
+        </button>
         {state.error && (
           <p className="text-xs text-red-500 mt-1">{state.error}</p>
         )}
@@ -1558,6 +1585,58 @@ function ProgramView({
           <MarkdownResult content={state.result.program} />
         )}
       </div>
+
+      {showProgramGuide && (
+        <div className="fixed inset-0 z-50 bg-slate-900/45 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="w-full max-w-3xl rounded-3xl border border-slate-200 bg-white shadow-2xl p-6 md:p-8 max-h-[85vh] overflow-y-auto text-left">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h3 className="text-xl md:text-2xl font-black tracking-tight text-slate-900">
+                  Program & Müfredat Rehberi
+                </h3>
+                <p className="text-sm text-slate-500 mt-1">
+                  Bu alanların ne işe yaradığını hızlıca buradan okuyabilirsin.
+                </p>
+              </div>
+              <button
+                onClick={() => setShowProgramGuide(false)}
+                className="px-3 py-1 rounded-full border border-slate-200 text-xs font-bold text-slate-500 hover:bg-slate-50"
+              >
+                Kapat
+              </button>
+            </div>
+
+            <div className="mt-5 space-y-4 text-sm text-slate-700 leading-relaxed">
+              <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4">
+                <div className="text-xs uppercase tracking-[0.2em] text-slate-400 font-bold mb-2">
+                  Program Üretimi
+                </div>
+                <p><strong>Seviye:</strong> İçeriğin dil zorluğunu belirler.</p>
+                <p><strong>Anadil:</strong> Olası ana dil etkilerine göre öneri üretir.</p>
+                <p><strong>Haftalık ders:</strong> Program yoğunluğunu ayarlar.</p>
+                <p><strong>Ders süresi:</strong> Etkinlik dağılımını ve tempoyu belirler.</p>
+                <p><strong>Hedef:</strong> Programın ana yönünü tanımlar.</p>
+                <p><strong>İhtiyaçlar:</strong> Konuşma/dinleme/yazma önceliklerini belirtir.</p>
+              </div>
+
+              <div className="rounded-2xl border border-slate-100 bg-white p-4">
+                <div className="text-xs uppercase tracking-[0.2em] text-slate-400 font-bold mb-2">
+                  Öğrenci Profili
+                </div>
+                <p><strong>Haftalık odak:</strong> Bir sonraki dersin temasını belirler.</p>
+                <p><strong>Ödev tercihleri:</strong> Ödev tipini kişiselleştirir.</p>
+                <p><strong>Zorlanılan alanlar:</strong> Tekrar ve destek planını şekillendirir.</p>
+                <p><strong>Ölçme notu:</strong> Kişiye özel müfredat kararlarını güçlendirir.</p>
+                <p><strong>Mesaj şablonu:</strong> Ders sonrası iletişim tonunu korur.</p>
+              </div>
+
+              <p className="text-xs text-slate-500">
+                Detaylı metin için proje kökünde <code>guide.md</code> dosyasını da kullanabilirsin.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="w-full pt-8 border-t border-slate-100">
         <div className="text-left space-y-4">
@@ -1613,10 +1692,10 @@ function ProgramView({
               onChange={(e) =>
                 setStudentDraft((prev) => ({
                   ...prev,
-                  weekly_lessons: Number(e.target.value) || 1,
+                  weekly_lessons: e.target.value,
                 }))
               }
-              placeholder="Haftalık ders"
+              placeholder="Haftalık ders sayısı"
             />
             <input
               type="number"
@@ -1625,10 +1704,10 @@ function ProgramView({
               onChange={(e) =>
                 setStudentDraft((prev) => ({
                   ...prev,
-                  lesson_duration_minutes: Number(e.target.value) || 60,
+                  lesson_duration_minutes: e.target.value,
                 }))
               }
-              placeholder="Ders süresi"
+              placeholder="Ders süresi (dk)"
             />
             <input
               className="px-3 py-2 rounded-xl border border-slate-200 bg-white text-sm"
@@ -2470,6 +2549,12 @@ function ProgramView({
                               >
                                 Düzenle
                               </button>
+                              <button
+                                onClick={() => removeSession(session.id)}
+                                className="mt-1 text-[10px] font-semibold text-slate-500 hover:text-red-500"
+                              >
+                                Sil
+                              </button>
                             <button
                               onClick={() =>
                                 onOpenSummary(
@@ -2556,7 +2641,7 @@ function ProgramView({
   );
 }
 
-function QuizPdfView() {
+function QuizPdfView({ selectedModel }: { selectedModel: string }) {
   const [level, setLevel] = useState("A2");
   const [topic, setTopic] = useState("Yönelme eki -e/-a");
   const [count, setCount] = useState(10);
@@ -2569,10 +2654,11 @@ function QuizPdfView() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch("http://localhost:8010/quiz-pdf", {
+      const res = await fetch("http://127.0.0.1:8010/quiz-pdf", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          model: selectedModel,
           level,
           topic,
           question_count: count,
@@ -2661,7 +2747,7 @@ function QuizPdfView() {
   );
 }
 
-function ScenarioDialoguesView() {
+function ScenarioDialoguesView({ selectedModel }: { selectedModel: string }) {
   const [level, setLevel] = useState("A2");
   const [scenario, setScenario] = useState("Markette alışveriş");
   const [customScenario, setCustomScenario] = useState("");
@@ -2681,17 +2767,17 @@ function ScenarioDialoguesView() {
       variation_token?: string;
     },
     { dialogue: string }
-  >("/scenario-dialogue");
+  >("/scenario-dialogue", selectedModel);
 
   const [sendCards, cardsState] = useLLMRequest<
     { level: string; scenario: string; card_count: number },
     { cards: string }
-  >("/roleplay-cards");
+  >("/roleplay-cards", selectedModel);
 
   const [sendExercises, exercisesState] = useLLMRequest<
     { level: string; dialogue: string; include_key?: boolean },
     { exercises: string }
-  >("/dialogue-exercises");
+  >("/dialogue-exercises", selectedModel);
 
   const resolvedScenario =
     scenario === "Diğer" ? customScenario.trim() : scenario;
@@ -2733,10 +2819,11 @@ function ScenarioDialoguesView() {
     setPdfLoading(true);
     setPdfError(null);
     try {
-      const res = await fetch("http://localhost:8010/roleplay-cards-pdf", {
+      const res = await fetch("http://127.0.0.1:8010/roleplay-cards-pdf", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          model: selectedModel,
           level,
           scenario: resolvedScenario,
           card_count: 5,
@@ -2910,11 +2997,13 @@ function ScenarioDialoguesView() {
 }
 
 function SummaryView({
+  selectedModel,
   prefillStudentName,
   prefillStudentId,
   prefillNotes,
   prefillNextTopics,
 }: {
+  selectedModel: string;
   prefillStudentName?: string;
   prefillStudentId?: string;
   prefillNotes?: string;
@@ -2955,12 +3044,12 @@ function SummaryView({
       struggle_areas?: string;
     },
     { summary: string }
-  >("/summary");
+  >("/summary", selectedModel);
 
   useEffect(() => {
     const loadStudents = async () => {
       try {
-        const res = await fetch("http://localhost:8010/students");
+        const res = await fetch("http://127.0.0.1:8010/students");
         const data = await res.json();
         if (data?.students) {
           setStudents(data.students);
@@ -3206,6 +3295,7 @@ function HomeView({
 
   const upcoming = scheduleEntries
     .map(toUpcoming)
+    .filter((e) => Boolean(studentsIndex[e.studentName]))
     .filter((e) => e.nextDate && e.nextDate >= now)
     .sort((a, b) => a.nextDate.getTime() - b.nextDate.getTime())
     .slice(0, 6);

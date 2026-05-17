@@ -6,6 +6,7 @@ from .llm_client import default_llm
 
 
 class ScenarioDialogueRequest(BaseModel):
+    model: str | None = None
     level: str
     scenario: str
     turn_count: int = 12
@@ -36,4 +37,4 @@ KURALLAR:
 - Eğer önceki yanıt verilmişse, aynı cümleleri veya çok benzer ifadeleri kullanma.
 {variation}{avoid_block}
 """
-    return default_llm.generate(prompt.strip())
+    return default_llm.generate(prompt.strip(), model=req.model)

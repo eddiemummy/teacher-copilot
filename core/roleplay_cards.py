@@ -4,6 +4,7 @@ from .llm_client import default_llm
 
 
 class RoleplayCardsRequest(BaseModel):
+    model: str | None = None
     level: str
     scenario: str
     card_count: int = 5
@@ -30,4 +31,4 @@ HEDEF: {req.card_count} kart
 - Kartlar kısa ve uygulanabilir olsun.
 - Metin sadece kartları içersin, başlık yazma.
 """
-    return default_llm.generate(prompt.strip())
+    return default_llm.generate(prompt.strip(), model=req.model)

@@ -29,7 +29,21 @@ class LLMClient:
             else os.getenv("OLLAMA_MODEL", "gpt-oss:120b-cloud")
         )
 
-    def generate(self, prompt: str, images: Optional[List[str]] = None) -> str:
+    def generate(
+        self,
+        prompt: str,
+        images: Optional[List[str]] = None,
+        model: Optional[str] = None,
+    ) -> str:
+        if model:
+            previous_model = self.model
+            self.model = model
+            try:
+                if self.provider == "openai":
+                    return self._generate_openai(prompt, images)
+                return self._generate_ollama(prompt, images)
+            finally:
+                self.model = previous_model
         if self.provider == "openai":
             return self._generate_openai(prompt, images)
         return self._generate_ollama(prompt, images)
@@ -84,4 +98,3 @@ class LLMClient:
 
 
 default_llm = LLMClient()
-
